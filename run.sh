@@ -24,6 +24,7 @@ if [ "$#" -ne 1 ]; then
     echo "    NAME_STYLE: name of the .style to use"
     echo "    NAME_MML: name of the .mml file to render to mapnik.xml"
     echo "    NAME_SQL: name of the .sql file to use"
+    echo "    SKIP_DB_INIT: skips database initialization tasks"
     exit 1
 fi
 
@@ -52,14 +53,18 @@ if [ "$1" == "import" ]; then
     # Initialize PostgreSQL
     createPostgresConfig
     service postgresql start
-    sudo -u postgres createuser renderer
-    sudo -u postgres createdb -E UTF8 -O renderer gis
-    sudo -u postgres psql -d gis -c "CREATE EXTENSION postgis;"
-    sudo -u postgres psql -d gis -c "CREATE EXTENSION hstore;"
-    sudo -u postgres psql -d gis -c "ALTER TABLE geometry_columns OWNER TO renderer;"
-    sudo -u postgres psql -d gis -c "ALTER TABLE spatial_ref_sys OWNER TO renderer;"
-    setPostgresPassword
 
+    if [ -z ${SKIP_DB_INIT} ] ; then
+        sudo -u postgres createuser renderer
+        sudo -u postgres createdb -E UTF8 -O renderer gis
+        sudo -u postgres psql -d gis -c "CREATE EXTENSION postgis;"
+        sudo -u postgres psql -d gis -c "CREATE EXTENSION hstore;"
+        sudo -u postgres psql -d gis -c "ALTER TABLE geometry_columns OWNER TO renderer;"
+        sudo -u postgres psql -d gis -c "ALTER TABLE spatial_ref_sys OWNER TO renderer;"
+        setPostgresPassword
+    else
+        echo "SKIP_DB_INIT is set."
+    fi 
     # Download Luxembourg as sample if no data is provided
     if [ ! -f /data/region.osm.pbf ] && [ -z "${DOWNLOAD_PBF:-}" ]; then
         echo "WARNING: No import file at /data/region.osm.pbf, so importing Luxembourg as example..."
